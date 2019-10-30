@@ -143,7 +143,7 @@ class GPSModem:
                 self.logger.debug("end=%d", end)
                 line = line[:end]
                 parts = line.split(',')
-                self.logger.info("line=%s, parts=%s", line, parts)
+                self.logger.debug("line=%s, parts=%s", line, parts)
                 self.logger.info("[gps_modem] IP address is %s", parts[3])
                 return True
             else:
@@ -210,6 +210,19 @@ class GPSModem:
             idx2 = out.index('\r\n\r\nOK\r\n')
             imsi = out[10:idx2]
         return imsi
+
+    def get_ip(self):
+        out = self.ser.write('AT+QIACT?\r')
+        ip = "unknown"
+        if out.find('+QIACT:') != -1:
+            line = out[8:]
+            parts = line.split(',')
+            start = parts[3].find('"') + 1
+            end = parts[3][start:].find('"') + 1
+            ip = parts[3][start:end]
+        else:
+            self.logger.error("Failed to get context!")
+        return ip
 
     @staticmethod
     def decimal_degrees(degrees):
@@ -452,7 +465,10 @@ class GPSModem:
 
 if __name__ == "__main__":
     gps_modem = GPSModem()
-    gps_modem.get_imsi()
+    imsi = gps_modem.get_imsi()
+    ip = gps_modem.get_ip()
+
+    print(">>> IMSI: {}, IP: {}".format(imsi, ip))
 
     while True:
         try:
