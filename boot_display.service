@@ -1,10 +1,13 @@
+# Copy this to /lib/systemd/system/
+# https://www.dexterindustries.com/howto/run-a-program-on-your-raspberry-pi-at-startup/
+
 [Unit]
 Description=Boot Display
 After=multi-user.target
 
 [Service]
 Type=idle
-ExecStart=/usr/bin/python /home/debian/boot_display.py
+ExecStart=/usr/bin/python /home/debian/bbg-grove/boot_display.py > /home/debian/boot_display.log 2>&1
 
 [Install]
 WantedBy=multi-user.target

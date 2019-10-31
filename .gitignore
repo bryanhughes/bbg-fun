@@ -17,6 +17,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+*.mp3
+
 # C extensions
 *.so
 

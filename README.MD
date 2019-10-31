@@ -215,3 +215,70 @@ You should see 'Hello' on the display
 
 ## grove_led.py
 [add here]
+
+# Other Components
+Depending on the board that you are prototyping with, they will be configured with one or more USB slots. If you decide 
+to use one for a USB Bluetooth Dongle, be prepared for a challenge. I am using a 
+(Plugable Dongle)[https://www.amazon.com/gp/product/B009ZIILLI]  that I purchased on Amazon. It uses the a Broadcom chipset
+and not surprisingly is not fully supported on the Beagle Bone Green. 
+
+```bash
+dmesg | grep -i blue
+[   53.576284] Bluetooth: Core ver 2.21
+[   53.576492] Bluetooth: HCI device and connection manager initialized
+[   53.576522] Bluetooth: HCI socket layer initialized
+[   53.576538] Bluetooth: L2CAP socket layer initialized
+[   53.576595] Bluetooth: SCO socket layer initialized
+[   53.824668] Bluetooth: hci0: BCM: chip id 63
+[   53.841367] Bluetooth: hci0: BCM20702A
+[   53.842346] Bluetooth: hci0: BCM20702A1 (001.002.014) build 0000
+[   53.847327] bluetooth hci0: Direct firmware load for brcm/BCM20702A1-0a5c-21e8.hcd failed with error -2
+[   53.847368] Bluetooth: hci0: BCM: Patch brcm/BCM20702A1-0a5c-21e8.hcd not found
+
+```
+
+Then you will need to follow the instructions here:
+
+https://plugable.com/2014/06/23/plugable-usb-bluetooth-adapter-solving-hfphsp-profile-issues-on-linux/
+
+```bash
+dmesg | grep -i blue
+[   51.998663] Bluetooth: Core ver 2.21
+[   52.019350] Bluetooth: HCI device and connection manager initialized
+[   52.019391] Bluetooth: HCI socket layer initialized
+[   52.019407] Bluetooth: L2CAP socket layer initialized
+[   52.019525] Bluetooth: SCO socket layer initialized
+[   52.235321] Bluetooth: hci0: BCM: chip id 63
+[   52.251372] Bluetooth: hci0: BCM20702A
+[   52.252353] Bluetooth: hci0: BCM20702A1 (001.002.014) build 0000
+[   52.975322] Bluetooth: hci0: BCM20702A1 (001.002.014) build 1338
+[   52.991368] Bluetooth: hci0: Broadcom Bluetooth Device
+[   59.944556] Bluetooth: BNEP (Ethernet Emulation) ver 1.3
+[   59.944584] Bluetooth: BNEP filters: protocol multicast
+[   59.944614] Bluetooth: BNEP socket layer initialized
+[   60.306830] Bluetooth: RFCOMM TTY layer initialized
+[   60.306894] Bluetooth: RFCOMM socket layer initialized
+[   60.308989] Bluetooth: RFCOMM ver 1.11
+```
+
+Everything is reporting no errors. Unfortunately at this point I was still not getting any audio to play. After spending
+a day, I realized that while I was fumbling around, that I had installed both pulseaudio and bluealsa, but not really. 
+
+The next step I took was to build from source [bluealsa](https://github.com/Arkq/bluez-alsa). Be patient as none of the
+developer versions of the dependencies were on my device, so each time through the config I had to install the 
+missing developer version of the libraries. For me it was:
+
+```
+$ sudo apt-get install libasound2-dev libbluetooth-dev libsbc-dev libfdk-aac-dev
+```
+
+After making and installing the bluealsa, unfortunately it still did not work. A quick search and
+I found this [github issue](https://github.com/Arkq/bluez-alsa/issues/72) that explained that pulseaudio and
+bluealsa do not work together, so I removed pulseaudio
+
+```bash
+$ sudo  apt-get --purge remove pulseaudio
+```
+
+Then did a shutdown (power off) and then restarted and it worked. Make sure you follow the configuration and setup 
+instructions.
