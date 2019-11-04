@@ -211,6 +211,19 @@ class GPSModem:
             imsi = out[10:idx2]
         return imsi
 
+    def get_phone_number(self):
+        out = self.ser.write('AT+CNUM\r')
+        phone = "unknown"
+        if out.find('+CNUM:') != -1:
+            line = out[7:]
+            parts = line.split(',')
+            start = parts[2].find('"') + 1
+            end = parts[2][start:].find('"') + 1
+            phone = parts[2][start:end]
+        else:
+            self.logger.error("Failed to get context!")
+        return phone
+
     def get_ip(self):
         out = self.ser.write('AT+QIACT?\r')
         ip = "unknown"
@@ -467,8 +480,9 @@ if __name__ == "__main__":
     gps_modem = GPSModem()
     imsi = gps_modem.get_imsi()
     ip = gps_modem.get_ip()
+    phone = gps_modem.get_phone_number()
 
-    print(">>> IMSI: {}, IP: {}".format(imsi, ip))
+    print(">>> IMSI: {}, IP: {}, Phone: {}".format(imsi, ip, phone))
 
     while True:
         try:

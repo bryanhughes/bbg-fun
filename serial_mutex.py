@@ -14,7 +14,7 @@ class SerialMutex(object):
         fmt = '%(asctime)-15s %(message)s'
         logging.basicConfig(format=fmt, level=logging.INFO)
         self.logger = logging.getLogger('serial_mutex')
-        self.ser = serial.Serial('/dev/ttyO4', 115200, timeout=5)
+        self.ser = serial.Serial('/dev/ttyS4', 115200, timeout=5)
         self.lock = Lock()
 
     def write_message(self, recipient, binary_content):

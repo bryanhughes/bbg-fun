@@ -14,7 +14,7 @@ def main():
     grove_oled.oled_init()
     grove_oled.oled_setNormalDisplay()
     grove_oled.oled_clearDisplay()
-    grove_oled.oled_setTextXY(0,0)
+    grove_oled.oled_setTextXY(0, 0)
     grove_oled.oled_putString("Hello...")
 
     hostname = socket.gethostname()
@@ -25,9 +25,9 @@ def main():
     print("Computer Name: " + hostname)
     print("Computer IP Address: " + ip)
 
-    grove_oled.oled_setTextXY(0,0)
+    grove_oled.oled_setTextXY(0, 0)
     grove_oled.oled_putString("IP:      ")
-    grove_oled.oled_setTextXY(1,0)
+    grove_oled.oled_setTextXY(1, 0)
     grove_oled.oled_putString(ip)
 
     # First we need initialize our modem so that we get our IMSI
@@ -38,12 +38,12 @@ def main():
 
     print("Setting display. IMSI: {} IP: {}".format(imsi, cell_ip))
 
-    grove_oled.oled_setTextXY(3,0)
+    grove_oled.oled_setTextXY(3, 0)
     grove_oled.oled_putString("IMSI:   ")
-    grove_oled.oled_setTextXY(4,0)
+    grove_oled.oled_setTextXY(4, 0)
     grove_oled.oled_putString(imsi)
 
-    grove_oled.oled_setTextXY(6,0)
+    grove_oled.oled_setTextXY(6, 0)
     grove_oled.oled_putString("Cell IP:")
     grove_oled.oled_setTextXY(7, 0)
     grove_oled.oled_putString(cell_ip)
