@@ -7,7 +7,7 @@ After=multi-user.target
 
 [Service]
 Type=idle
-ExecStart=/usr/bin/python /home/debian/bbg-grove/boot_display.py > /home/debian/boot_display.log 2>&1
+ExecStart=/usr/bin/python /home/debian/bbg-fun/boot_display.py > /home/debian/boot_display.log 2>&1
 
 [Install]
 WantedBy=multi-user.target

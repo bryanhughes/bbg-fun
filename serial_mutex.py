@@ -17,7 +17,19 @@ class SerialMutex(object):
         self.ser = serial.Serial('/dev/ttyS4', 115200, timeout=5)
         self.lock = Lock()
 
-    def write_message(self, recipient, binary_content):
+    def write_message(self, recipient, text_content):
+        self.logger.info("[serial_mutex] Recipient: %s Message: %s (%d)", recipient, text_content, len(text_content))
+        with self.lock:
+            self.ser.write('AT+CMGS=' + recipient + '\r')
+            time.sleep(.500)
+            self.ser.write(text_content + "\r")
+            time.sleep(.500)
+            rx_buffer = self.write_(chr(26), 5)
+            if rx_buffer.find('OK') == -1:
+                self.logger.error("[serial_mutex] Failed to send sms message: [%s]", rx_buffer)
+                raise IOError("Failed to send sms message")
+
+    def write_pdu_message(self, recipient, binary_content):
         with self.lock:
             octets, pdu = self.make_pdu(recipient, binary_content)
             self.logger.info("[serial_mutex] octets = %d, pdu = %s", octets, pdu)
@@ -29,7 +41,7 @@ class SerialMutex(object):
             rx_buffer = self.write_(chr(26), 5)
             if rx_buffer.find('OK') == -1:
                 self.logger.error("[serial_mutex] Failed to send pdu sms message: [%s]", rx_buffer)
-                raise IOError("Failed to send sms message")
+                raise IOError("Failed to send pdu sms message")
 
     def make_pdu(self, recipient, message):
         # http://www.gsmfavorites.com/documents/sms/pdutext/
@@ -116,7 +128,7 @@ class SerialMutex(object):
         while True:
             rx_buffer += self.ser.read(1)
             if time.time() - stime > 60:
-                self.logger.warn("[serial_mutex] Timed out - no response from modem => %s", command)
+                self.logger.warning("[serial_mutex] Timed out - no response from modem => %s", command)
                 break
             elif self.ser.inWaiting() > 0:
                 while self.ser.inWaiting():

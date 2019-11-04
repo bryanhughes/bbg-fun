@@ -17,6 +17,7 @@ def to_bytes(s):
 
 class GPSModem:
     def __init__(self):
+        self.sms_mode = 1
         fmt = '%(asctime)-15s %(message)s'
         logging.basicConfig(format=fmt, level=logging.INFO)
         self.logger = logging.getLogger('gps_modem')
@@ -30,6 +31,7 @@ class GPSModem:
         self.test_qiact(0)
         self.test_sms_service()
         self.test_gps()
+        self.set_text_mode()
         self.logger.info("[gps_modem] ready...")
 
     def set_verbose_error(self):
@@ -38,6 +40,22 @@ class GPSModem:
         if out.find('OK') == -1:
             self.logger.error("[gps_modem] Failed to enable detailed error messages (AT+CMEE=2). out=%s", out)
             raise IOError("Failed to enable detailed error messages")
+
+    def set_pdu_mode(self):
+        self.sms_mode = 0
+        self.logger.info("[gps_modem] Setting SMS message to PDU mode...")
+        out = self.ser.write('AT+CMGF=0\r')
+        if out.find('OK') == -1:
+            self.logger.error("[gps_modem] Failed to set PDU mode (AT+CMGF=0). out=%s", out)
+            raise IOError("Failed to set PDU mode")
+
+    def set_text_mode(self):
+        self.sms_mode = 1
+        self.logger.info("[gps_modem] Setting SMS message to Text mode...")
+        out = self.ser.write('AT+CMGF=1\r')
+        if out.find('OK') == -1:
+            self.logger.error("[gps_modem] Failed to set Text mode (AT+CMGF=1). out=%s", out)
+            raise IOError("Failed to set Text mode")
 
     def test_cfun(self):
         self.logger.info("[gps_modem] Testing ME functionality (AT+CFUN?)...")
@@ -205,37 +223,37 @@ class GPSModem:
 
     def get_imsi(self):
         out = self.ser.write('AT+CIMI\r')
-        imsi = "na"
+        i = "na"
         if out:
             idx2 = out.index('\r\n\r\nOK\r\n')
-            imsi = out[10:idx2]
-        return imsi
+            i = out[10:idx2]
+        return i
 
     def get_phone_number(self):
         out = self.ser.write('AT+CNUM\r')
-        phone = "unknown"
+        p = "unknown"
         if out.find('+CNUM:') != -1:
             line = out[7:]
             parts = line.split(',')
-            start = parts[2].find('"') + 1
-            end = parts[2][start:].find('"') + 1
-            phone = parts[2][start:end]
+            start = parts[1].find('"') + 1
+            end = parts[1][start:].find('"') + 1
+            p = parts[1][start:end]
         else:
             self.logger.error("Failed to get context!")
-        return phone
+        return p
 
     def get_ip(self):
         out = self.ser.write('AT+QIACT?\r')
-        ip = "unknown"
+        i = "unknown"
         if out.find('+QIACT:') != -1:
             line = out[8:]
             parts = line.split(',')
             start = parts[3].find('"') + 1
             end = parts[3][start:].find('"') + 1
-            ip = parts[3][start:end]
+            i = parts[3][start:end]
         else:
             self.logger.error("Failed to get context!")
-        return ip
+        return i
 
     @staticmethod
     def decimal_degrees(degrees):
@@ -244,7 +262,7 @@ class GPSModem:
     def get_gps(self):
         out = self.ser.write('AT+QGPSLOC?\r')
         if len(out) < 9:
-            self.logger.warn("[gps_modem] Getting GPS failure - unexpected response: %s", out)
+            self.logger.warning("[gps_modem] Getting GPS failure - unexpected response: %s", out)
             return {}
 
         if out.find('+QGPSLOC:') != -1:
@@ -253,7 +271,7 @@ class GPSModem:
             out = out[idx1:idx2].split(",")
 
             if len(out) < 5:
-                self.logger.warn("[gps_modem] Getting GPS failure - unexpected response: %s", out)
+                self.logger.warning("[gps_modem] Getting GPS failure - unexpected response: %s", out)
                 return {}
 
             if int(out[5]) == 1:
@@ -381,8 +399,11 @@ class GPSModem:
             self.logger.exception("[gps_modem] Failed during cell monitor. %s", ex)
             return []
 
-    def write_message(self, recipient, binary_content):
-        self.ser.write_message(recipient, binary_content)
+    def write_pdu_message(self, recipient, binary_content):
+        self.ser.write_pdu_message(recipient, binary_content)
+
+    def write_message(self, recipient, text_content):
+        self.ser.write_message(recipient, text_content)
 
     def unpack_msg(self, pdu):
         """Unpacks ``pdu`` into septets and returns the decoded string"""
@@ -409,35 +430,53 @@ class GPSModem:
     def pop_message(self):
         """
         This function will read the message from index position 1 and then delete it. Any other messages
-        in storage will then move forward.
-        :return:    The message
+        in storage will then move forward. Note: If SMS message mode is PDU, then None will be returned
+        as the sender phone number
+        :return:    message, sender
         """
         # AT+CMGR=1
         # +CMGR: 1,"",33
         # 07914180835760F0040B914180835760F000008121316101722B0FC8329BFD065DDF723619D4026501
 
-        b = self.ser.write_wait('AT+CMGR=1\r', 5)
-        self.logger.info("[gps_modem] MT message 1 - %s", b)
-        start = b.find('+CMGR:') + 7
-        end = b.find('\r\n+', start)
-        if end == -1:
-            end = b.find('\r\n\r\nOK', start)
+        msg = None
+        sender = None
+        out = self.ser.write_wait('AT+CMGR=1\r', 5)
+        start = out.find('+CMGR: ')
+        if start != -1:
+            self.logger.info("[gps_modem] MT PDU message 1 - %s", out)
+            line = out[start + 7:]
+            end = line.find('\r\n')
+            line_end = end + 2
             if end == -1:
-                self.logger.error("[gps_modem] No MT messages...")
-                return None
+                end = line.find('\r\n\r\nOK')
+                line_end = end + 6
+                if end == -1:
+                    self.logger.error("[gps_modem] No MT messages...")
+                    return None, None
 
-        self.logger.debug(">>>>> b = %s, start = %d, end = %d", b, start, end)
+            if self.sms_mode == 0:
+                self.logger.debug(">>>>> out = %s, line = %, end = %d", out, line, end)
+                raw = line[:end]
+                self.logger.debug("[gps_modem] pop_message raw = %s", raw)
 
-        raw = b[start:end]
-        self.logger.debug("[gps_modem] pop_message raw = %s", raw)
+                parts = raw.split('\r\n')
+                self.logger.debug(">>>>> parts = %s:", parts)
+                pdu_msg = parts[1][54:]
+                msg = self.unpack_msg(pdu_msg)
+            else:
+                header = line[:end]
+                msg_end = line.find('\r\n\r\nOK', line_end)
+                msg = line[line_end:msg_end]
 
-        parts = raw.split('\r\n')
-        self.logger.debug(">>>>> parts = %s:", parts)
-        pdu_msg = parts[1][54:]
-
-        msg = self.unpack_msg(pdu_msg)
-        self.ser.write('AT+CMGD=1\r')
-        return msg
+                parts = header.split(',')
+                self.logger.info(">>>>> parts = %s", parts)
+                sender = parts[1]
+                self.logger.info(">>>>> out = %s, header = %s, body = %s, sender = %s", out, header, msg, sender)
+                self.logger.info("[gps_modem] pop_message msg = %s, sender = %s", msg, sender)
+            self.ser.write('AT+CMGD=1\r')
+        else:
+            self.logger.error("No messages to pop")
+        return msg, sender
 
     def reset_modem(self):
         self.ser.reset_modem()

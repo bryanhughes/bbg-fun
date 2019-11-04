@@ -26,22 +26,22 @@ def main():
     print("Computer IP Address: " + ip)
 
     grove_oled.oled_setTextXY(0, 0)
-    grove_oled.oled_putString("IP:      ")
+    grove_oled.oled_putString("IP:       ")
     grove_oled.oled_setTextXY(1, 0)
     grove_oled.oled_putString(ip)
 
     # First we need initialize our modem so that we get our IMSI
 
     modem = gps_modem.GPSModem()
-    imsi = modem.get_imsi()
+    phone = modem.get_phone_number()
     cell_ip = modem.get_ip()
 
-    print("Setting display. IMSI: {} IP: {}".format(imsi, cell_ip))
+    print("Setting display. Phone: {} IP: {}".format(phone, cell_ip))
 
     grove_oled.oled_setTextXY(3, 0)
-    grove_oled.oled_putString("IMSI:   ")
+    grove_oled.oled_putString("Phone:   ")
     grove_oled.oled_setTextXY(4, 0)
-    grove_oled.oled_putString(imsi)
+    grove_oled.oled_putString(phone)
 
     grove_oled.oled_setTextXY(6, 0)
     grove_oled.oled_putString("Cell IP:")
